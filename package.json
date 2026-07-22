@@ -8,7 +8,10 @@
     "dev": "nodemon server.js",
     "dev:frontend": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint . --ext .js,.jsx",
+    "lint:fix": "eslint . --ext .js,.jsx --fix",
+    "format": "prettier --write \"**/*.{js,jsx,json,css,md}\""
   },
   "keywords": [
     "portfolio",
@@ -36,8 +39,10 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.5.4",
+    "eslint": "^8.52.0",
     "nodemon": "^3.0.1",
     "postcss": "^8.5.20",
+    "prettier": "^3.1.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
