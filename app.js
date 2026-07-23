@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const { requestLogger } = require('./middleware/logger');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -25,11 +26,16 @@ app.use(helmet());
 // Compression for better performance
 app.use(compression());
 
+// Request logging middleware
+app.use(requestLogger);
+
 // Rate limiting - 100 requests per 15 minutes
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
 });
 
 app.use('/api/', limiter);
@@ -58,7 +64,23 @@ app.use('/api/analytics', analyticsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Portivo API is running' });
+  res.status(200).json({
+    success: true,
+    status: 'ok',
+    message: 'Portivo API is running',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      type: 'NOT_FOUND',
+      message: `Route ${req.originalUrl} not found`,
+    },
+  });
 });
 
 // Error handling middleware (must be last)
