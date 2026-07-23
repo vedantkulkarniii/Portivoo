@@ -1,14 +1,25 @@
 const Profile = require('../models/Profile');
 const AnalyticsEvent = require('../models/AnalyticsEvent');
 const generateSubdomain = require('../utils/generateSubdomain');
+const { validateSubdomain, validatePortfolioType, validateFileUpload, isValidObjectId } = require('../middleware/validation');
+const { profileLogger, errorLogger } = require('../middleware/logger');
 const path = require('path');
 const fs = require('fs');
 
-// @desc    Get user profile
-// @route   GET /api/profiles/me
-// @access  Private
+/**
+ * Get user's profile
+ * @route   GET /api/profiles/me
+ * @access  Private
+ */
 const getProfile = async (req, res, next) => {
   try {
+    if (!req.user?._id) {
+      return res.status(401).json({
+        success: false,
+        error: { type: 'UNAUTHORIZED', message: 'User not authenticated' },
+      });
+    }
+
     let profile = await Profile.findOne({ userId: req.user._id });
 
     if (!profile) {
@@ -23,25 +34,41 @@ const getProfile = async (req, res, next) => {
       data: profile,
     });
   } catch (error) {
+    errorLogger.database('getProfile', error);
     next(error);
   }
 };
 
-// @desc    Get public portfolio by subdomain
-// @route   GET /api/profiles/public/:subdomain
-// @access  Public
+/**
+ * Get public portfolio by subdomain
+ * @route   GET /api/profiles/public/:subdomain
+ * @access  Public
+ */
 const getPublicProfile = async (req, res, next) => {
   try {
     const { subdomain } = req.params;
 
-    const profile = await Profile.findOne({ subdomain, active: true })
+    // Validate subdomain format
+    const subdomainValidation = validateSubdomain(subdomain);
+    if (!subdomainValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: { type: 'INVALID_SUBDOMAIN', message: subdomainValidation.message },
+      });
+    }
+
+    const profile = await Profile.findOne({ subdomain: subdomainValidation.value, active: true })
       .populate('userId', 'name email')
       .populate('deployment.templateId');
 
     if (!profile) {
+      errorLogger.notFound('Portfolio', subdomainValidation.value);
       return res.status(404).json({
         success: false,
-        message: 'Portfolio not found or deactivated',
+        error: {
+          type: 'NOT_FOUND',
+          message: 'Portfolio not found or deactivated',
+        },
       });
     }
 
@@ -81,36 +108,39 @@ const getPublicProfile = async (req, res, next) => {
       data: profile,
     });
   } catch (error) {
+    errorLogger.database('getPublicProfile', error);
     next(error);
   }
 };
 
-// @desc    Check subdomain availability
-// @route   GET /api/profiles/check-subdomain/:subdomain
-// @access  Private
+/**
+ * Check subdomain availability
+ * @route   GET /api/profiles/check-subdomain/:subdomain
+ * @access  Private
+ */
 const checkSubdomain = async (req, res, next) => {
   try {
     const { subdomain } = req.params;
 
-    if (!subdomain || subdomain.length < 3) {
-      return res.status(400).json({
+    if (!req.user?._id) {
+      return res.status(401).json({
         success: false,
-        available: false,
-        message: 'Subdomain must be at least 3 characters',
+        error: { type: 'UNAUTHORIZED', message: 'User not authenticated' },
       });
     }
 
-    // Validate subdomain format (alphanumeric and hyphens only)
-    if (!/^[a-z0-9-]+$/.test(subdomain)) {
+    // Validate subdomain format
+    const validation = validateSubdomain(subdomain);
+    if (!validation.isValid) {
       return res.status(400).json({
         success: false,
         available: false,
-        message: 'Subdomain can only contain lowercase letters, numbers, and hyphens',
+        error: { type: 'INVALID_SUBDOMAIN', message: validation.message },
       });
     }
 
     const existing = await Profile.findOne({
-      subdomain,
+      subdomain: validation.value,
       userId: { $ne: req.user._id },
     });
 
@@ -120,6 +150,7 @@ const checkSubdomain = async (req, res, next) => {
       message: existing ? 'Subdomain already taken' : 'Subdomain available',
     });
   } catch (error) {
+    errorLogger.database('checkSubdomain', error);
     next(error);
   }
 };
@@ -239,17 +270,46 @@ const toggleActive = async (req, res, next) => {
   }
 };
 
-// @desc    Upload image
-// @route   POST /api/profiles/upload
-// @access  Private
+/**
+ * Upload image file
+ * @route   POST /api/profiles/upload
+ * @access  Private
+ */
 const uploadImage = async (req, res, next) => {
   try {
+    if (!req.user?._id) {
+      return res.status(401).json({
+        success: false,
+        error: { type: 'UNAUTHORIZED', message: 'User not authenticated' },
+      });
+    }
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'No file uploaded',
+        error: {
+          type: 'NO_FILE',
+          message: 'No file uploaded',
+        },
       });
     }
+
+    // Validate file
+    const fileValidation = validateFileUpload(req.file);
+    if (!fileValidation.isValid) {
+      // Clean up uploaded file on validation failure
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({
+        success: false,
+        error: {
+          type: 'INVALID_FILE',
+          message: fileValidation.message,
+        },
+      });
+    }
+
+    // Log the upload
+    profileLogger.uploadImage(req.user._id, req.file.filename);
 
     // Return the file path (relative to public/uploads)
     const filePath = `/uploads/${req.file.filename}`;
@@ -259,9 +319,16 @@ const uploadImage = async (req, res, next) => {
       data: {
         url: filePath,
         filename: req.file.filename,
+        size: req.file.size,
+        uploadedAt: new Date(),
       },
     });
   } catch (error) {
+    // Clean up uploaded file on error
+    if (req.file) {
+      fs.unlink(req.file.path, () => {});
+    }
+    errorLogger.database('uploadImage', error);
     next(error);
   }
 };
