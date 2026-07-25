@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import PortfolioView from './pages/PortfolioView'
+import NotFound from './pages/NotFound'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -43,7 +44,11 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="*" element={<NotFound />} />
+          </>
         )}
       </Routes>
     </Router>
