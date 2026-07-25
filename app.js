@@ -30,12 +30,20 @@ app.use(compression());
 app.use(requestLogger);
 
 // Rate limiting - 100 requests per 15 minutes
+// The health-check endpoint is excluded so monitoring tools
+// don't consume the per-IP quota.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
+  skip: (req) => req.path === '/api/health', // skip health checks
+  keyGenerator: (req) => {
+    // Normalise IPv6-mapped IPv4 addresses (e.g. "::ffff:127.0.0.1" -> "127.0.0.1")
+    const ip = req.ip || req.socket.remoteAddress || '';
+    return ip.startsWith('::ffff:') ? ip.slice(7) : ip;
+  },
 });
 
 app.use('/api/', limiter);
