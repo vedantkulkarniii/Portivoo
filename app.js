@@ -14,6 +14,7 @@ const authRoutes = require('./routes/auth');
 const profileRoutes = require('./routes/profiles');
 const templateRoutes = require('./routes/templates');
 const analyticsRoutes = require('./routes/analytics');
+const contactRoutes = require('./routes/contact');
 
 // Connect to database
 connectDB();
@@ -69,6 +70,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
