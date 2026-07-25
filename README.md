@@ -1,6 +1,13 @@
-# Portivo - Portfolio Builder
+# Portivo — Portfolio Builder
 
-A modern, fast, and scalable portfolio builder application - a production-ready alternative to showcaseMe.in.
+![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
+![License](https://img.shields.io/badge/License-ISC-blue)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
+
+> A modern, fast, and scalable portfolio builder — a production-ready alternative to showcaseMe.in.
+> Build, customise, and deploy your personal portfolio in minutes.
 
 ## Tech Stack
 
@@ -197,3 +204,10 @@ ISC
 
 Portivo Team
 
+## Contributing
+
+We welcome contributions! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to open issues, submit pull requests, and run the project locally.
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for a full list of changes across releases.
